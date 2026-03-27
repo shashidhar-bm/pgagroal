@@ -95,6 +95,18 @@ pgagroal_server_clear(char* server);
 int
 pgagroal_server_switch(char* server);
 
+/**
+ * Get live PostgreSQL connectivity, role, and replication lag for one configured server.
+ *
+ * @param server       The server index into config->servers[]
+ * @param status       Output: "Running" or "Down"  (static string, do not free)
+ * @param primary      Output: "Yes", "No", or "Unknown" (static string, do not free)
+ * @param behind_bytes Output: replication lag in bytes (>= 0 for standbys; -1 if N/A or unavailable)
+ * @return 0 upon success, otherwise 1
+ */
+int
+pgagroal_server_get_connectivity_info(int server, char** status, char** primary, int64_t* behind_bytes);
+
 #ifdef __cplusplus
 }
 #endif

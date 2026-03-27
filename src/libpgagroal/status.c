@@ -33,6 +33,7 @@
 #include <management.h>
 #include <memory.h>
 #include <network.h>
+#include <server.h>
 #include <status.h>
 #include <utils.h>
 
@@ -196,23 +197,29 @@ status_details(bool details, struct json* response)
    for (int i = 0; i < config->number_of_servers; i++)
    {
       struct json* js = NULL;
-      const char* health_str = "UNKNOWN";
-      int health_state = atomic_load(&config->servers[i].health_state);
+      char* srv_status = NULL;
+      char* srv_primary = NULL;
+      int64_t behind_bytes = -1;
 
-      if (health_state == SERVER_HEALTH_UP)
-         health_str = "UP";
-      else if (health_state == SERVER_HEALTH_DOWN)
-         health_str = "DOWN";
+      if (strlen(config->servers[i].name) == 0)
+      {
+         continue;
+      }
+
+      pgagroal_server_get_connectivity_info(i, &srv_status, &srv_primary, &behind_bytes);
 
       pgagroal_json_create(&js);
 
-      pgagroal_json_put(js, MANAGEMENT_ARGUMENT_SERVER, (uintptr_t)config->servers[i].name, ValueString);
       pgagroal_json_put(js, MANAGEMENT_ARGUMENT_HOST, (uintptr_t)config->servers[i].host, ValueString);
       pgagroal_json_put(js, MANAGEMENT_ARGUMENT_PORT, (uintptr_t)config->servers[i].port, ValueInt32);
-      pgagroal_json_put(js, MANAGEMENT_ARGUMENT_STATE, (uintptr_t)pgagroal_server_state_as_string(config->servers[i].state), ValueString);
-      pgagroal_json_put(js, MANAGEMENT_ARGUMENT_HEALTH, (uintptr_t)health_str, ValueString);
+      pgagroal_json_put(js, MANAGEMENT_ARGUMENT_STATUS, (uintptr_t)srv_status, ValueString);
+      pgagroal_json_put(js, MANAGEMENT_ARGUMENT_PRIMARY, (uintptr_t)srv_primary, ValueString);
+      if (behind_bytes >= 0)
+      {
+         pgagroal_json_put(js, MANAGEMENT_ARGUMENT_BEHIND, (uintptr_t)behind_bytes, ValueInt64);
+      }
 
-      pgagroal_json_append(servers, (uintptr_t)js, ValueJSON);
+      pgagroal_json_put(servers, config->servers[i].name, (uintptr_t)js, ValueJSON);
    }
 
    pgagroal_json_put(response, MANAGEMENT_ARGUMENT_SERVERS, (uintptr_t)servers, ValueJSON);
